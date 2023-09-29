@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+import os
+import requests
+
+from fastapi import FastAPI, File, UploadFile, Path
 
 app = FastAPI()
 urlList = ["https://collections.louvre.fr/media/cache/large/0000000021/0000000007/0000582334_OG.JPG",
@@ -54,6 +57,8 @@ urlList = ["https://collections.louvre.fr/media/cache/large/0000000021/000000000
 "https://collections.louvre.fr/media/cache/large/0000000021/0000000720/0000584768_OG.JPG"]
 
 job_counter = 0
+uploadFolder = "/upload/"
+os.makedirs(uploadFolder, exist_ok=True)
 
 @app.get("/")
 def read_root():
@@ -69,3 +74,29 @@ async def get_job():
 @app.get("/job_count")
 async def job_count():
     return {"job_counter": job_counter}
+
+@app.post("/img_upload")
+async def img_upload(file: UploadFile):
+    with open(os.path.join(uploadFolder, file.filename), "wb") as img:
+        img.write(file.file.read())
+    return {"status": "successful"}
+
+@app.get("/img_download/")
+async def img_download(url: str):
+    response = requests.get(url)
+
+    url_breakdown = url.split("/")
+    filename = url_breakdown[-1]
+
+    if response.status_code == 200:
+        content = response.content
+        with open(os.path.join(uploadFolder, filename), "wb") as img:
+            img.write(content)
+        return {"status": "successful"}
+    else:
+        return {"status": "failed"}
+
+@app.get("/uploaded_content/")
+async def uploaded_content():
+    listUrls = os.listdir(uploadFolder)
+    return {"uploaded_content": listUrls}
